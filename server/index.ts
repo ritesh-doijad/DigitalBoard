@@ -72,10 +72,7 @@ nextApp.prepare().then(() => {
     })
     
     socket.on("joined_room",()=>{
-      console.log("room joined")
-
       const roomId=getRoomId()
-
       rooms.get(roomId)?.set(socket.id,[])
       const roomData=JSON.stringify([...rooms.get(roomId)!])
       console.log("this is data sending drom the server to client",roomData)
@@ -83,6 +80,13 @@ nextApp.prepare().then(() => {
 
       socket.broadcast.to(roomId).emit("new_user",socket.id)
     })
+
+    socket.on("request_room_data", () => {
+      const roomId = getRoomId();
+      const roomData = JSON.stringify([...rooms.get(roomId) || []]);
+      io.to(socket.id).emit("room", roomData); // Send room data
+  });
+  
     
     socket.on("leave_room",()=>{
       const roomId=getRoomId()
@@ -99,7 +103,7 @@ nextApp.prepare().then(() => {
     });
 
     socket.on("undo", () => {
-        console.log("undo");
+        
         const roomId=getRoomId()
         undoMove(roomId, socket.id);
         socket.broadcast.to(roomId).emit("user_undo", socket.id);
