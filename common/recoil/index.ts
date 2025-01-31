@@ -1,9 +1,14 @@
 import { configureStore } from "@reduxjs/toolkit";
-import optionsReducer from "./optionsSlice"; // Replace with the correct path to your slice
+import optionsReducer from "../recoil/options/optionsSlice";
+import roomReducer from "../recoil/room/roomSlice";
+import usersReducer from "../recoil/users/usersSlice";
+ // Replace with the correct path to your slice
 
 const store = configureStore({
   reducer: {
     options: optionsReducer,
+    room: roomReducer,
+    users: usersReducer,
   },
 });
 

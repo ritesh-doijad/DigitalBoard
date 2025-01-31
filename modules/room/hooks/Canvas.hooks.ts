@@ -2,17 +2,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { socket } from "@/common/lib/socket";
 import { useOptions } from "@/common/recoil/options/options.hooks";
-import { drawOnUndo, handleMove } from "../helpers/Canvas.helpers";
+import { drawAllMoves, handleMove } from "../helpers/Canvas.helpers";
 import { useUsers } from "@/common/recoil/users/users.hooks";
 import { useBoardPostion } from "./useBoardPostion";
 import { getPos } from "@/common/lib/getPos";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/common/recoil/users";
-import { useSetRecoilState } from "recoil";
 import { setUsers, undoUserMove, updateUser } from "@/common/recoil/users/usersSlice";
+import { RootState } from "@/common/recoil";
 
+const movesWithoutUser:Move[]=[]
 const savedMoves: Move[] = [];
-let moves: [number, number][] = [];
+let tempMoves: [number, number][] = [];
 
 export const useDraw = (
   ctx: CanvasRenderingContext2D | undefined,
@@ -43,7 +43,7 @@ export const useDraw = (
       savedMoves.pop();
       socket.emit("undo");
 
-      drawOnUndo(ctx, savedMoves, users);
+      drawAllMoves(ctx,movesWithoutUser, savedMoves, users);
 
       handleEnd();
     }
@@ -70,22 +70,27 @@ export const useDraw = (
     ctx.beginPath();
     ctx.lineTo(getPos(x, movedX), getPos(y, movedY));
     ctx.stroke();
+
+    tempMoves.push([getPos(x,movedX),getPos(y,movedY)])
   };
 
   const handleEndDrawing = () => {
     if (!ctx || blocked) return;
     setDrawing(false);
 
+    ctx.closePath();
     const move:Move={
-      path:moves,
+      path:tempMoves,
       options
     }
     
-    ctx.closePath();
     savedMoves.push(move);
+    tempMoves = [];
     socket.emit("draw", move);
+drawAllMoves(ctx,movesWithoutUser,savedMoves,users)
+    
 
-    moves = [];
+
     handleEnd();
   };
 
@@ -97,7 +102,7 @@ export const useDraw = (
     ctx.lineTo(getPos(x, movedX), getPos(y, movedY));
     ctx.stroke();
 
-    moves.push([getPos(x, movedX), getPos(y, movedY)]);
+    tempMoves.push([getPos(x, movedX), getPos(y, movedY)]);
   };
   return {
     handleDraw,
@@ -118,9 +123,8 @@ export const useSocketDraw = (
 
 // Wait until ctx is ready
 useEffect(() => {
-  console.log("Sending 'joined_room' event to the server...");
-  socket.emit("joined_room");
-}, []);
+  if(ctx)socket.emit("joined_room");
+}, [ctx]);
 
 useEffect(() => {
   console.log("useEffect running...");
@@ -130,40 +134,41 @@ useEffect(() => {
   }
   console.log("ctx is now available, setting up socket listener...");
 
-  const handleJoined = (roomJSON: string) => {
-      console.log("Raw roomJSON received:", roomJSON);
-      try {
-          // Try parsing room data
-          const room: Room = new Map(JSON.parse(roomJSON));
-          console.log("Parsed room data:", room);
+  const handleJoined = (room: Room, usersToParse: string) => {
+    try {
+        console.log("Room data:", room);
+        console.log("usersToParse value:", usersToParse);
 
-          // Process moves for each user
-          room.forEach((userMoves, userId) => {
-              console.log(`Processing moves for user: ${userId}, Total moves: ${userMoves.length}`);
-              if (userMoves.length > 0) {
-                  userMoves.forEach((move, index) => {
-                      console.log(`Processing move ${index + 1} for user ${userId}:`, move);
-                      handleMove(move, ctx);
-                  });
-              } else {
-                  console.log(`No moves for user: ${userId}`);
-              }
-          });
-
-          console.log("Handling end of move processing...");
-          handleEnd(); // Handle end after processing moves
-
-          // Dispatch updated users with the previous state
-          console.log("Dispatching updated users to state...");
-          room.forEach((userMoves, userId) => {
-              console.log(`Updating state for user ${userId}:`, userMoves);
-              dispatch(setUsers({ ...users, [userId]: userMoves }));
-          });
-
-      } catch (error) {
-          console.error("Error handling joined room data:", error);
+        // Ensure usersToParse is a valid string
+        if (!usersToParse || usersToParse === "undefined") {
+          console.error("Invalid or undefined usersToParse data.");
+          return;
       }
-  };
+
+        // Try parsing the JSON string into an object
+        const users = new Map<string, Move[]>(JSON.parse(usersToParse));
+
+        // Process moves for each user
+        room.drawed.forEach((move: Move) => {
+            handleMove(move, ctx);
+            movesWithoutUser.push(move);
+        });
+
+        users.forEach((userMoves, userId) => {
+            userMoves.forEach((move) => handleMove(move, ctx));
+
+            // Convert Map to object and dispatch
+            dispatch(setUsers(Object.fromEntries(users)));
+        });
+
+        console.log("Handling end of move processing...");
+        handleEnd(); // Handle end after processing moves
+
+    } catch (error) {
+        console.error("Error handling joined room data:", error);
+    }
+};
+
 
   // Request room data after connecting
   console.log("Emitting 'request_room_data' event to server...");
@@ -233,7 +238,7 @@ useEffect(() => {
 
       if (ctx) {
         // Assuming you have a function to handle undo drawing
-        drawOnUndo(ctx, savedMoves, users);
+        drawAllMoves(ctx,movesWithoutUser, savedMoves, users);
         handleEnd();
       }
     });

@@ -1,4 +1,5 @@
 import { socket } from "@/common/lib/socket"
+import { useSetRoomId } from "@/common/recoil/room/roomHook"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,22 +10,27 @@ import { FormEvent, useEffect, useState } from "react"
 
 export const Home=()=>{
     const [roomId,setRoomId]=useState("")
+    const setReduxRoomId=useSetRoomId()
 
     const router=useRouter()
 
     useEffect(()=>{
         socket.on("created",(roomIdFromServer)=>{
+            setReduxRoomId(roomIdFromServer)
             router.push(roomIdFromServer)
         })
         socket.on("joined",(roomIdFromServer,failed)=>{
-            if(!failed) router.push(roomIdFromServer)
+            if(!failed) {
+              setReduxRoomId(roomIdFromServer)
+              router.push(roomIdFromServer)
+            }
             else console.log("failed to join the room")
         })
         return ()=>{
             socket.off("created")
             socket.off("joined")
         }
-    },[router])
+    },[router,setReduxRoomId])
 
     const handleCreateRoom=()=>{
         socket.emit("create_room")

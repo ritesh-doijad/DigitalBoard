@@ -1,6 +1,7 @@
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from './index';
+
 import { setUsers, updateUser } from './usersSlice';
+import { RootState } from '..';
 
 interface UserData {
   [key: string]: Move[];  

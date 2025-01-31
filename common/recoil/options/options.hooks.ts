@@ -1,4 +1,4 @@
-import { RootState } from "@/common/recoil/options/index";
+import { RootState } from "@/common/recoil/index";
 import { useDispatch, useSelector } from "react-redux";
 import { setLineColor, setLineWidth } from "./optionsSlice";
  // Adjust the path to your `store.ts`

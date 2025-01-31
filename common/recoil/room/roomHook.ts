@@ -1,6 +1,7 @@
 import { useSelector, useDispatch } from "react-redux";
-import { RootState, AppDispatch } from "../room/store";
+
 import { setRoomId } from "../room/roomSlice";
+import { AppDispatch, RootState } from "..";
 
 // Get room ID (Replaces `useRecoilValue(roomAtom)`)
 export const useRoomId = () => {
