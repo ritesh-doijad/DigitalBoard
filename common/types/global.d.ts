@@ -1,15 +1,28 @@
+import { Interface } from "readline";
+
 export declare global {
   interface CtxOptions {
     lineWidth: number;
     lineColor: string;
   }
 
-  interface Move {
+ export interface Move {
     path: [number, number][];
     options: CtxOptions;
   }
 
-  type Room ={users: Map<string, Move[]>; drawed:Move[]}
+  type Room = {
+    id: string; // ✅ Add this line
+    users: Map<string, Move[]>;
+    drawed: Move[];
+  };
+
+  interface ClientRoom{
+    id:string;
+    users:Map<string,Move[]>;
+    movesWithoutUser:Move[];
+    myMoves:Move[];
+  }
 
   interface ServerToClinetEvent {
     room:(room:Room,usersToParse:string)=>void;

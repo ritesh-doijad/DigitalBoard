@@ -3,13 +3,17 @@ import { useViewPortSize } from "@/common/hooks/useViewPortSize";
 import { useMotionValue, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useKeyPressEvent } from "react-use";
-import { useDraw, useSocketDraw } from "../hooks/Canvas.hooks";
 import { socket } from "@/common/lib/socket";
 
 import MiniMap from "./Minimap";
 import { useBoardPostion } from "../hooks/useBoardPostion";
+import { useDraw } from "../hooks/useDraw";
+import { useSocketDraw } from "../hooks/useSocketDraw";
+import { useRoom } from "@/common/recoil/room/roomHook";
+import { drawAllMoves } from "../helpers/Canvas.helpers";
 
 const Canvas = () => {
+  const room=useRoom()
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const smallCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -55,8 +59,6 @@ const Canvas = () => {
   } = useDraw(
     ctx,
     dragging,
-
-    copyCanvasToSmall
   );
 
   useEffect(() => {
@@ -75,7 +77,18 @@ const Canvas = () => {
     };
   }, [dragging]);
 
-  useSocketDraw(ctx,drawing , copyCanvasToSmall);
+  useSocketDraw(ctx,drawing);
+
+  useEffect(() => {
+    if (!ctx) return;
+    socket.emit("joined_room");
+  }, [ctx]);
+
+  useEffect(() => {
+    if (!ctx) return;
+    drawAllMoves(ctx, room);
+    copyCanvasToSmall();
+  }, [ctx,room]);
 
   return (
     <div className="relative h-full w-full overflow-hidden">

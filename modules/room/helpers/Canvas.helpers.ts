@@ -1,40 +1,34 @@
 import { CANVAS_SIZE } from "@/common/constants/canvasSize";
+import { RoomState } from "@/common/recoil/room/roomSlice";
 
 export const handleMove = (move: Move, ctx: CanvasRenderingContext2D) => {
   console.log("Handling move:", move);
   const { options, path } = move;
-  const tempCtx = ctx;
 
-  if (tempCtx) {
-    tempCtx.lineWidth = options.lineWidth;
-    tempCtx.strokeStyle = options.lineColor;
+  if (ctx) {
+    ctx.lineWidth = options.lineWidth;
+    ctx.strokeStyle = options.lineColor;
 
-    tempCtx.beginPath();
+    ctx.beginPath();
     path.forEach(([x, y]) => {
-      tempCtx.lineTo(x, y);
+      ctx.lineTo(x, y);
     });
-    tempCtx.stroke();
-    tempCtx.closePath();
+    ctx.stroke();
+    ctx.closePath();
   }
 };
 
-export const drawAllMoves = (
-  ctx: CanvasRenderingContext2D,
-  movesWithoutUser:Move[],
-  savedMoves: Move[],
-  users: { [key: string]: Move[] }
-) => {
+// ✅ Update function to take `room` object instead of separate arguments
+export const drawAllMoves = (ctx: CanvasRenderingContext2D, room: RoomState) => {
   ctx.clearRect(0, 0, CANVAS_SIZE.width, CANVAS_SIZE.height);
 
-  movesWithoutUser.forEach((move)=>{
-    handleMove(move,ctx)
-  })
+  room.movesWithoutUser.forEach((move:Move) => handleMove(move, ctx));
 
-  Object.values(users).forEach((user) => {
-    user.forEach((move) => handleMove(move, ctx));
+  // ✅ Explicitly tell TypeScript that `userMoves` is an array of `Move[]`
+  Object.values(room.users).forEach((userMoves) => {
+    (userMoves as Move[]).forEach((move) => handleMove(move, ctx));
   });
 
-  savedMoves.forEach((move) => {
-    handleMove(move,ctx);
-  });
+  room.myMoves.forEach((move:Move) => handleMove(move, ctx));
 };
+

@@ -68,7 +68,7 @@ nextApp.prepare().then(() => {
         roomId = Math.random().toString(36).substring(2, 6);
       } while (rooms.has(roomId));
       socket.join(roomId);
-      rooms.set(roomId, { users: new Map(), drawed: [] });
+      rooms.set(roomId, { id: roomId, users: new Map(), drawed: [] });
       rooms.get(roomId)?.users.set(socket.id, []);
 
       io.to(socket.id).emit("created", roomId);

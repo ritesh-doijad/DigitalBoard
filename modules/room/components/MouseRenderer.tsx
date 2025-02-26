@@ -1,19 +1,20 @@
 import { socket } from "@/common/lib/socket"
-import { useEffect, useState } from "react"
+import { useRoom } from "@/common/recoil/room/roomHook"
 import { UserMouse } from "./UserMouse"
-import { useUserIds } from "@/common/recoil/users/users.hooks"
 
+export const MouseRenderer = () => {
+  const room = useRoom()
 
+  if (!room || !room.users) return null 
 
+  const userMap = new Map<string, Move[]>(Object.entries(room.users));
 
-export const MouseRenderer=()=>{
-   const userIds=useUserIds()
-
-    return (
-        <>
-        {userIds.map((userId)=>{
-            return <UserMouse userId={userId} key={userId}/>;
-        })}
-        </>
-    )
+  return (
+    <>
+      {[...userMap.keys()].map((userId) => {
+        if (!socket.id || userId === socket.id) return null; 
+        return <UserMouse userId={userId} key={userId} />;
+      })}
+    </>
+  )
 }

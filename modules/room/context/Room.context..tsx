@@ -1,9 +1,11 @@
 import { createContext, ReactNode, useEffect, useState } from "react";
 import { MotionValue, useMotionValue } from "framer-motion";
 import { useDispatch, useSelector } from "react-redux";
-import { setUsers, updateUser } from "@/common/recoil/users/usersSlice"; // Adjust based on your slice
+
 import { socket } from "@/common/lib/socket";
-import { RootState } from "@/common/recoil/users";
+import { RootState } from "@/common/recoil";
+import { addUser, removeUser } from "@/common/recoil/room/roomSlice";
+
 
 // Create context with default values
 export const roomContext = createContext<{
@@ -14,7 +16,7 @@ export const roomContext = createContext<{
 // Define the RoomContextProvider component
 const RoomContextProvider = ({ children }: { children: ReactNode }) => {
   const dispatch = useDispatch();
-  const users = useSelector((state: RootState) => state.users);  // Get users state
+  const users = useSelector((state: RootState) => state.room.users);  // Get users state
   const [userIds, setUserIds] = useState<string[]>([]);  // Local state for user IDs
 
   // Initialize MotionValues for x and y
@@ -28,13 +30,15 @@ const RoomContextProvider = ({ children }: { children: ReactNode }) => {
   
 
   useEffect(() => {
-    socket.on("new_user", (newUsers: string) => {
-      dispatch(setUsers({ ...users, [newUsers]: [] }));
+    socket.on("new_user", (userId: string) => {
+      dispatch(addUser(userId)); // Uses `addUser` from roomSlice
     });
+    
 
     socket.on("user_disconnected", (userId: string) => {
-      dispatch(updateUser({ id: userId, data: [] })); // Remove user from Redux state
+      dispatch(removeUser(userId)); // Uses `removeUser` from roomSlice
     });
+    
 
     return () => {
       socket.off("new_user");

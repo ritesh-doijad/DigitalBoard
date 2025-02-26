@@ -5,11 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/router"
 import { FormEvent, useEffect, useState } from "react"
+import { JoinRoomErrorDialog } from "../modals/JoinRoomErrorDialog"
 
 
 
 export const Home=()=>{
     const [roomId,setRoomId]=useState("")
+    const [isDialogOpen, setIsDialogOpen] = useState(false)
     const setReduxRoomId=useSetRoomId()
 
     const router=useRouter()
@@ -19,16 +21,20 @@ export const Home=()=>{
             setReduxRoomId(roomIdFromServer)
             router.push(roomIdFromServer)
         })
-        socket.on("joined",(roomIdFromServer,failed)=>{
+        const handleJoinedRoom=(roomIdFromServer:string,failed?:boolean)=>{
             if(!failed) {
               setReduxRoomId(roomIdFromServer)
               router.push(roomIdFromServer)
             }
-            else console.log("failed to join the room")
-        })
+            else {
+              setIsDialogOpen(true)
+              console.log("failed to join the room")
+            }
+        }
+        socket.on("joined",handleJoinedRoom)
         return ()=>{
             socket.off("created")
-            socket.off("joined")
+            socket.off("joined",handleJoinedRoom)
         }
     },[router,setReduxRoomId])
 
@@ -68,6 +74,7 @@ export const Home=()=>{
           </CardContent>
         </Card>
       </div>
+      <JoinRoomErrorDialog isOpen={isDialogOpen} onClose={() => setIsDialogOpen(false)} roomId={roomId} />
       </div>
        
     )

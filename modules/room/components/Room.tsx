@@ -1,27 +1,62 @@
-import { useRoomId } from "@/common/recoil/room/roomHook"
-import RoomContextProvider from "../context/Room.context."
-import Canvas from "./Canvas"
-import { MousePosition } from "./MousePosition"
-import { MouseRenderer } from "./MouseRenderer"
-import { ToolBar } from "./ToolBaar"
+import { useSelector, useDispatch } from "react-redux";
+import RoomContextProvider from "../context/Room.context.";
+import Canvas from "./Canvas";
+import { MousePosition } from "./MousePosition";
+import { MouseRenderer } from "./MouseRenderer";
+import { ToolBar } from "./ToolBaar";
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+import { socket } from "@/common/lib/socket";
+import { useRoom } from "@/common/recoil/room/roomHook";
+import { setRoomId } from "@/common/recoil/room/roomSlice";
 
+const Room = () => {
+    const room = useRoom()
+    const dispatch = useDispatch();
+    const router = useRouter();
+    const [isLoading, setIsLoading] = useState(true);
 
+    useEffect(() => {
+        const handleJoined = (roomIdFromServer: string, failed?: boolean) => {
+            if (failed) {
+                router.push("/");
+            } else {
+                dispatch(setRoomId(roomIdFromServer));
+                setIsLoading(false); // Stop loading when roomId is set
+            }
+        };
 
-const Room=()=>{
-    const roomId=useRoomId()
+        socket.on("joined", handleJoined);
 
-    if(!roomId) return <div>No Room Id</div>
-    return(
+        return () => {
+            socket.off("joined", handleJoined);
+        };
+    }, [router, dispatch]);
+
+    useEffect(() => {
+        if (room.id) {
+            const dynamicRoomId = router.query.roomId?.toString();
+            if (dynamicRoomId && room.id !== dynamicRoomId) {
+                socket.emit("join_room", dynamicRoomId);
+            }
+            setIsLoading(false);
+        }
+    }, [room.id, router.query.roomId]);
+
+    if (isLoading) {
+        return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    }
+
+    return (
         <RoomContextProvider>
-        <div className="relative h-full w-full overflow-hidden">
-            <ToolBar/>
-            <Canvas/>
-            <MousePosition/>
-            <MouseRenderer/>
-        </div>
-    </RoomContextProvider>
-    )
-   
-}
+            <div className="relative h-full w-full overflow-hidden">
+                <ToolBar />
+                <Canvas />
+                <MousePosition />
+                <MouseRenderer />
+            </div>
+        </RoomContextProvider>
+    );
+};
 
 export default Room;
