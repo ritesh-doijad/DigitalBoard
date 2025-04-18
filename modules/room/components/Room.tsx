@@ -3,12 +3,14 @@ import RoomContextProvider from "../context/Room.context.";
 import Canvas from "./Canvas";
 import { MousePosition } from "./MousePosition";
 import { MouseRenderer } from "./MouseRenderer";
-import { ToolBar } from "./ToolBaar";
+
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { socket } from "@/common/lib/socket";
 import { useRoom } from "@/common/recoil/room/roomHook";
 import { setRoomId } from "@/common/recoil/room/roomSlice";
+import { ToolBar } from "./ToolBar/ToolBar";
+
 
 const Room = () => {
     const room = useRoom()
@@ -49,7 +51,7 @@ const Room = () => {
 
     return (
         <RoomContextProvider>
-            <div className="relative h-full w-full overflow-hidden">
+            <div className="relative h-screen w-full overflow-hidden">
                 <ToolBar />
                 <Canvas />
                 <MousePosition />

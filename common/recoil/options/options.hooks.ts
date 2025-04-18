@@ -17,3 +17,15 @@ export const useSetOptions=()=>{
   return setOptions;
 }
 
+export const useOptionsState = () => {
+  const options = useSelector((state: RootState) => state.options);
+  const dispatch = useDispatch();
+
+  return [
+    options,
+    {
+      setLineColor: (color: string) => dispatch(setLineColor(color)),
+      setLineWidth: (width: number) => dispatch(setLineWidth(width)),
+    },
+  ] as const;
+};
