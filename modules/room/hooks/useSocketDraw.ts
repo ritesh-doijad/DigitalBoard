@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { socket } from "@/common/lib/socket";
 import { useDispatch } from "react-redux";
 
@@ -12,10 +12,10 @@ import { useRoom } from "@/common/recoil/room/roomHook";
 
 export const useSocketDraw = (
   ctx: CanvasRenderingContext2D | undefined,
-  drawing: boolean,
+  drawing: boolean
 ) => {
   const dispatch = useDispatch();
-  const { id, users, movesWithoutUser, myMoves } = useRoom(); // ✅ Extract full room state
+  const { id, users, movesWithoutUser, myMoves, usersMoves } = useRoom(); // ✅ Extract full room state
 
   const prevUsersRef = useRef(users);
   const prevMovesRef = useRef(movesWithoutUser);
@@ -28,53 +28,72 @@ export const useSocketDraw = (
 
   // Handle room data when a user joins
   useEffect(() => {
-    const handleJoined = (room: Room, usersToParse: string) => {
+    const handleJoined = (
+      room: Room,
+      usersSerialized: string,
+      usersMovesSerialized: string
+    ) => {
       try {
         console.log("Received room data:", room);
-        console.log("Received usersToParse:", usersToParse);
-
+        console.log("Received usersSerialized:", usersSerialized);
+        console.log("Received usersMovesSerialized:", usersMovesSerialized);
+    
         if (!room) {
           console.error("No room data received.");
           return;
         }
-
-        if (!usersToParse || usersToParse === "undefined") {
-          usersToParse = "{}"; // Fix: Prevent parsing "undefined"
+    
+        if (!usersSerialized || usersSerialized === "undefined") {
+          usersSerialized = "[]";
         }
-
-        const parsedUsersArray = JSON.parse(usersToParse);
-
-        // Ensure it's an array before passing it to Map
-        if (!Array.isArray(parsedUsersArray)) {
-          console.error("Invalid usersToParse format:", usersToParse);
+    
+        if (!usersMovesSerialized || usersMovesSerialized === "undefined") {
+          usersMovesSerialized = "[]";
+        }
+    
+        // Deserialize both into Map-like arrays
+        const parsedUsersArray: [string, string][] = JSON.parse(usersSerialized);
+        const parsedUsersMovesArray: [string, Move[]][] = JSON.parse(usersMovesSerialized);
+    
+        if (!Array.isArray(parsedUsersArray) || !parsedUsersArray.every(i => Array.isArray(i) && i.length === 2)) {
+          console.error("Invalid usersSerialized format");
           return;
         }
-
-        const parsedUsers = new Map<string, Move[]>(parsedUsersArray);
-
+    
+        if (!Array.isArray(parsedUsersMovesArray) || !parsedUsersMovesArray.every(i => Array.isArray(i) && i.length === 2)) {
+          console.error("Invalid usersMovesSerialized format");
+          return;
+        }
+    
+        const usersMap = new Map<string, string>(parsedUsersArray);
+        const usersMoves = new Map<string, Move[]>(parsedUsersMovesArray);
+    
         // ✅ Set moves made before the user joined
         dispatch(setMovesWithoutUser(room.drawed || []));
-
+    
         // ✅ Add user moves
-        parsedUsers.forEach((userMoves, userId) => {
-          userMoves.forEach((move) => {
+        usersMoves.forEach((moves, userId) => {
+          moves.forEach((move) => {
             dispatch(addUserMove({ userId, move }));
           });
         });
-
-        // ✅ Ensure canvas is updated
+    
+        // ✅ Draw on canvas
         if (ctx) {
           drawAllMoves(ctx, {
             id: room.id,
-            users: Object.fromEntries(parsedUsers),
+            users:usersMap, // <- this one is for canvas (plain object)
+            usersMoves: Object.fromEntries(usersMoves), // <- same
             movesWithoutUser: room.drawed || [],
-            myMoves: [], // No saved personal moves on join
+            myMoves: [],
           });
         }
       } catch (error) {
         console.error("Error handling joined room data:", error);
       }
     };
+    
+    
 
     socket.emit("request_room_data");
     socket.on("room", handleJoined);
@@ -109,6 +128,7 @@ export const useSocketDraw = (
         drawAllMoves(ctx, {
           id,
           users,
+          usersMoves,  // Ensure usersMoves is passed for state consistency
           movesWithoutUser,
           myMoves,
         });
@@ -119,7 +139,7 @@ export const useSocketDraw = (
     return () => {
       socket.off("user_undo", handleUserUndo);
     };
-  }, [ctx, dispatch, id, users, movesWithoutUser, myMoves]);
+  }, [ctx, dispatch, id, users, movesWithoutUser, myMoves, usersMoves]);
 
   // Update refs to prevent stale state
   useEffect(() => {

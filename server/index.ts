@@ -26,24 +26,24 @@ nextApp.prepare().then(() => {
     const room = rooms.get(roomId);
 
     if (!room?.users.has(socketId)) {
-      room?.users.set(socketId, [move]);
+      room?.usersMoves.set(socketId, [move]);
     }
 
-    room?.users.get(socketId)?.push(move);
+    room?.usersMoves.get(socketId)?.push(move);
   };
 
   const undoMove = (roomId: string, socketId: string) => {
     const room = rooms.get(roomId);
 
-    room?.users.get(socketId)?.pop();
+    room?.usersMoves.get(socketId)?.pop();
   };
 
   const leaveRoom = (roomId: string, socketId: string) => {
     const room = rooms.get(roomId);
 
-    if(!room) return;
+    if (!room) return;
 
-    const userMoves = room?.users.get(socketId);
+    const userMoves = room?.usersMoves.get(socketId);
 
     if (userMoves && room?.drawed) {
       room.drawed.push(...userMoves);
@@ -63,71 +63,96 @@ nextApp.prepare().then(() => {
     };
     console.log(`User connected: ${socket.id}`);
 
-    socket.on("create_room", () => {
+    socket.on("create_room", (username) => {
       let roomId: string;
 
       do {
         roomId = Math.random().toString(36).substring(2, 6);
       } while (rooms.has(roomId));
       socket.join(roomId);
-      rooms.set(roomId, { id: roomId, users: new Map(), drawed: [] });
-      rooms.get(roomId)?.users.set(socket.id, []);
+      rooms.set(roomId, {
+        id: roomId,
+        users: new Map([[socket.id, username]]),
+        drawed: [],
+        usersMoves: new Map([[socket.id, []]]),
+      });
 
       io.to(socket.id).emit("created", roomId);
     });
 
-    socket.on("join_room", (roomId: string) => {
-      if (rooms.has(roomId)) {
+    socket.on("join_room", (roomId: string, username: string) => {
+      const room = rooms.get(roomId);
+      if (room) {
         socket.join(roomId);
+
+        room.users.set(socket.id, username);
+        room.usersMoves.set(socket.id, []);
 
         io.to(socket.id).emit("joined", roomId);
       } else io.to(socket.id).emit("joined", "", true);
     });
 
+    socket.on("check_room", (roomId) => {
+      if (rooms.has(roomId)) socket.emit("room_exists", true);
+      else socket.emit("room_exists", false);
+    });
+
     socket.on("joined_room", () => {
       const roomId = getRoomId();
       const room = rooms.get(roomId);
-  
+    
       if (room) {
-          room.users.set(socket.id, []); // Add user with empty array
-  
-          // Serialize the users map into an object
-          const roomData = JSON.stringify([...room.users]);
-  
-          console.log("this is data sending from the server to client", roomData);
-          console.log("this is the room and roomdata that is passing to client side", room, roomData);
-  
-          io.to(socket.id).emit("room", room, roomData); // Send room data to the specific user
-          socket.broadcast.to(roomId).emit("new_user", socket.id); // Notify others about the new user
+        // Ensure socket is initialized in usersMoves
+        if (!room.usersMoves.has(socket.id)) {
+          room.usersMoves.set(socket.id, []);
+        }
+    
+        // Serialize the maps for client-side parsing
+        const usersMovesSerialized = JSON.stringify([...room.usersMoves]); // Map<string, Move[]>
+        const usersSerialized = JSON.stringify([...room.users]); // Map<string, string>
+    
+        console.log("Sending joined room data:", {
+          room,
+          usersSerialized,
+          usersMovesSerialized,
+        });
+    
+        io.to(socket.id).emit("room", room, usersSerialized, usersMovesSerialized);
+        socket.broadcast.to(roomId).emit("new_user", socket.id,room.users.get(socket.id)|| "anonymous");
       }
-  });
-  
+    });
+    
 
     socket.on("request_room_data", () => {
       const roomId = getRoomId();
       const room = rooms.get(roomId);
-    
+
       if (!room) {
         io.to(socket.id).emit("room", null);
         return;
       }
-    
+
       io.to(socket.id).emit("room", room);
     });
-    
 
     socket.on("leave_room", () => {
       const roomId = getRoomId();
-      leaveRoom(roomId,socket.id)
+      leaveRoom(roomId, socket.id);
 
-     io.to(roomId).emit("user_disconnected",socket.id)
+      io.to(roomId).emit("user_disconnected", socket.id);
     });
 
     socket.on("draw", (move) => {
       console.log("drawing");
+      const timestamp=Date.now()
       const roomId = getRoomId();
-      addMove(roomId, socket.id, move);
-      socket.broadcast.to(roomId).emit("user_draw", move, socket.id);
+      addMove(roomId, socket.id, {...move,timestamp});
+      io.to(socket.id).emit('your_move',{...move,timestamp})
+      socket.broadcast.to(roomId).emit("user_draw", {...move,timestamp}, socket.id);
+    });
+
+    socket.on("send_msg", (msg) => {
+      io.to(getRoomId()).emit("new_msg", socket.id, msg);
     });
 
     socket.on("undo", () => {
@@ -143,11 +168,11 @@ nextApp.prepare().then(() => {
 
     socket.on("disconnecting", () => {
       const roomId = getRoomId();
-      leaveRoom(roomId,socket.id)
+      leaveRoom(roomId, socket.id);
       console.log("Client disconnected:", socket.id);
       io.to(roomId).emit("user_disconnected", socket.id);
-      
-      console.log("disconnected from server")
+
+      console.log("disconnected from server");
     });
   });
 

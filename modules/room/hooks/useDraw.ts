@@ -45,6 +45,16 @@ export const useDraw = (
     };
   }, [handleUndo]);
 
+  useEffect(()=>{
+    socket.on("your_move",(move)=>{
+      handleAddMyMove(move)
+    })
+
+    return ()=>{
+      socket.off("your_move")
+    }
+  })
+
   // ✅ Handles the start of a drawing stroke
   const handleStartDrawing = useCallback((x: number, y: number) => {
     if (!ctx || blocked) return;
@@ -79,10 +89,13 @@ export const useDraw = (
     const move: Move = {
       path: tempMovesRef.current,
       options,
+      timestamp:0,
+      eraser:options.erase,
     };
 
-    handleAddMyMove(move);
+   
     tempMovesRef.current = [];
+    ctx.globalCompositeOperation='source-over'
     socket.emit("draw", move);
   }, [ctx, blocked, handleAddMyMove, options]);
 

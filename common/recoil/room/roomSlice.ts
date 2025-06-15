@@ -1,15 +1,21 @@
+import { getNextColor } from "@/common/lib/getNextColor";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { enableMapSet } from 'immer';
+
+enableMapSet();
 
 export interface RoomState {
   id: string;
-  users: { [key: string]: Move[] }; // Users and their moves
-  movesWithoutUser: Move[]; // Moves made before a user joined
-  myMoves: Move[]; // Moves of the current user
+  usersMoves: { [userId: string]: Move[] }; // Parsed from Map<string, Move[]>
+  users: Map<string, User>; // Using Map<string, string> for users
+  movesWithoutUser: Move[];
+  myMoves: Move[];
 }
 
 const initialState: RoomState = {
   id: "",
-  users: {},
+  usersMoves: {},
+  users: new Map(), // Initialize as a Map
   movesWithoutUser: [],
   myMoves: [],
 };
@@ -19,28 +25,36 @@ const roomSlice = createSlice({
   initialState,
   reducers: {
     setRoom: (state, action: PayloadAction<RoomState>) => {
-      return action.payload; // Replace the entire room state
+      return action.payload;
     },
     setRoomId: (state, action: PayloadAction<string>) => {
       state.id = action.payload;
     },
-    addUser: (state, action: PayloadAction<string>) => {
-      if (!state.users[action.payload]) {
-        state.users[action.payload] = [];
+    addUser: (state, action: PayloadAction<{ userId: string; name: string }>) => {
+      const { userId, name } = action.payload;
+    
+      if (!state.usersMoves[userId]) {
+        state.usersMoves[userId] = [];
       }
+    
+      const color = getNextColor([...state.users.values()].at(-1)?.color);
+    
+      state.users.set(userId, { name, color });
     },
+
     removeUser: (state, action: PayloadAction<string>) => {
-      delete state.users[action.payload];
+      delete state.usersMoves[action.payload]; // Correctly delete user moves
+      state.users.delete(action.payload); // Use Map's delete method
     },
     addUserMove: (state, action: PayloadAction<{ userId: string; move: Move }>) => {
-      if (!state.users[action.payload.userId]) {
-        state.users[action.payload.userId] = [];
+      if (!state.usersMoves[action.payload.userId]) {
+        state.usersMoves[action.payload.userId] = [];
       }
-      state.users[action.payload.userId].push(action.payload.move);
+      state.usersMoves[action.payload.userId].push(action.payload.move);
     },
     undoUserMove: (state, action: PayloadAction<string>) => {
-      if (state.users[action.payload]?.length) {
-        state.users[action.payload].pop();
+      if (state.usersMoves[action.payload]?.length) {
+        state.usersMoves[action.payload].pop();
       }
     },
     setMovesWithoutUser: (state, action: PayloadAction<Move[]>) => {
@@ -54,6 +68,15 @@ const roomSlice = createSlice({
     },
     removeMyMove: (state) => {
       state.myMoves.pop();
+    },
+    setUsersAndMoves: (state, action: PayloadAction<{
+      id: string;
+      usersMoves: { [userId: string]: Move[] };
+      users: Map<string, User>; // Accepting Map directly
+    }>) => {
+      state.id = action.payload.id;
+      state.usersMoves = action.payload.usersMoves;
+      state.users = action.payload.users; // No need for conversion
     },
     clearRoom: () => initialState,
   },
@@ -70,6 +93,7 @@ export const {
   addMoveWithoutUser,
   addMyMove,
   removeMyMove,
+  setUsersAndMoves,
   clearRoom,
 } = roomSlice.actions;
 

@@ -1,6 +1,6 @@
 import { RootState } from "@/common/recoil/index";
 import { useDispatch, useSelector } from "react-redux";
-import { setLineColor, setLineWidth } from "./optionsSlice";
+import { setLineColor, setLineWidth, toggleErase } from "./optionsSlice";
  // Adjust the path to your `store.ts`
 
 export const useOptions = () => {
@@ -13,6 +13,7 @@ export const useSetOptions=()=>{
   const setOptions = {
     setLineColor: (color: string) => dispatch(setLineColor(color)),
     setLineWidth: (width: number) => dispatch(setLineWidth(width)),
+    toggleErase: () => dispatch(toggleErase()),
   };
   return setOptions;
 }
@@ -26,6 +27,7 @@ export const useOptionsState = () => {
     {
       setLineColor: (color: string) => dispatch(setLineColor(color)),
       setLineWidth: (width: number) => dispatch(setLineWidth(width)),
+      toggleErase: () => dispatch(toggleErase()),
     },
   ] as const;
 };

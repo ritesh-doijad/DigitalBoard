@@ -8,7 +8,7 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-import { useBoardPostion } from "../hooks/useBoardPostion";
+import { useBoardPostion } from "../../hooks/useBoardPostion";
 
 interface MiniMapProps {
   
@@ -44,7 +44,7 @@ const MiniMap = forwardRef<HTMLCanvasElement, MiniMapProps>(
 
     return (
       <div
-        className="absolute right-10 top-10 z-30 rounded-lg bg-zinc-200"
+        className="absolute right-10 top-10 z-30 overflow-hidden rounded-lg bg-zinc-50"
         ref={containerRef}
         style={{
           width: CANVAS_SIZE.width / 7,

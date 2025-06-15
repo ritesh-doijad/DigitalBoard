@@ -7,10 +7,11 @@ import {
   clearRoom,
   removeMyMove,
   removeUser,
-  undoUserMove, // Renamed from removeUserMove
+  undoUserMove,
   RoomState,
   setRoom,
   setRoomId,
+  setUsersAndMoves,
 } from "../room/roomSlice";
 import { AppDispatch, RootState } from "..";
 
@@ -18,31 +19,39 @@ export const useRoom = () => {
   return useSelector((state: RootState) => state.room, shallowEqual);
 };
 
-// Set the entire room state
 export const useSetRoom = () => {
   const dispatch = useDispatch<AppDispatch>();
   return (room: RoomState) => dispatch(setRoom(room));
 };
 
-// Get room ID
 export const useRoomId = () => {
   return useSelector((state: RootState) => state.room.id, shallowEqual);
 };
 
-// Set room ID
 export const useSetRoomId = () => {
   const dispatch = useDispatch<AppDispatch>();
   return (id: string) => dispatch(setRoomId(id));
 };
 
-// Manage users (Add, Remove, Manage Moves)
-export const useUserActions = () => {
- 
+// ✅ Updated to pass both users and moves as Map
+export const useSetUsersAndMoves = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  return (data: {
+    id: string;
+    usersMoves: { [userId: string]: Move[] };
+    users: Map<string, User>; // Directly accepting Map
+  }) => {
+    // Dispatch action with Map users, no conversion needed
+    dispatch(setUsersAndMoves(data));
+  };
+};
 
+// ✅ Updated to pass both userId and username
+export const useUserActions = () => {
   const dispatch = useDispatch<AppDispatch>();
 
-  const addUserToRoom = (userId: string) => {
-    dispatch(addUser(userId)); // Fix: Pass only userId as a string
+  const addUserToRoom = (userId: string, name: string) => {
+    dispatch(addUser({ userId, name }));
   };
 
   const removeUserFromRoom = (userId: string) => {
@@ -54,7 +63,7 @@ export const useUserActions = () => {
   };
 
   const undoLastMoveForUser = (userId: string) => {
-    dispatch(undoUserMove(userId)); // Updated to match roomSlice reducer
+    dispatch(undoUserMove(userId));
   };
 
   return { addUserToRoom, removeUserFromRoom, addMoveToUser, undoLastMoveForUser };
@@ -65,7 +74,7 @@ export const useMyMoves = () => {
   const dispatch = useDispatch<AppDispatch>();
   const myMoves = useSelector((state: RootState) => state.room.myMoves);
 
-  const addMove = (move:Move) => {
+  const addMove = (move: Move) => {
     dispatch(addMyMove(move));
   };
 

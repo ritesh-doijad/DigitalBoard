@@ -1,5 +1,5 @@
 import { useRef } from "react"
-import { useBoardPostion } from "../hooks/useBoardPostion"
+import { useBoardPostion } from "../../hooks/useBoardPostion"
 import { useInterval, useMouse } from "react-use"
 import { socket } from "@/common/lib/socket"
 import {motion} from "framer-motion"
@@ -20,7 +20,7 @@ export const MousePosition=()=>{
             socket.emit("mouse_move",getPos(docX,x),getPos(docY,y))
             prevPosition.current={x:docX,y:docY}
         }
-    },25)
+    },150)
 
     return (
         <motion.div ref={ref} className=" pointer-events-none absolute left-0 top-0 z-50"
